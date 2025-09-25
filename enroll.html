@@ -11,35 +11,37 @@
   <h2 class="text-center mb-4">Customer Enrollment</h2>
 
   <form id="enrollForm" class="card p-4 shadow-sm">
+    <!-- Customer Info -->
     <div class="mb-3">
-      <label class="form-label">Customer ID</label>
+      <label for="customerId" class="form-label">Customer ID</label>
       <input type="text" id="customerId" class="form-control" placeholder="Enter Customer ID" required>
     </div>
     <div class="mb-3">
-      <label class="form-label">Full Name</label>
+      <label for="fullName" class="form-label">Full Name</label>
       <input type="text" id="fullName" class="form-control" placeholder="Enter Full Name" required>
     </div>
     <div class="mb-3">
-      <label class="form-label">Phone Number</label>
+      <label for="phone" class="form-label">Phone Number</label>
       <input type="tel" id="phone" class="form-control" placeholder="Enter Phone Number" required>
     </div>
     <div class="mb-3">
-      <label class="form-label">Home Address</label>
+      <label for="address" class="form-label">Home Address</label>
       <textarea id="address" class="form-control" rows="2" placeholder="Enter Home Address"></textarea>
     </div>
 
-    <div class="mb-3">
-      <label class="form-label">Capture Photo</label>
-      <div class="text-center">
-        <video id="enrollVideo" autoplay playsinline width="240" height="180" class="border rounded"></video>
-        <br>
-        <button type="button" id="btnStartEnrollCam" class="btn btn-sm btn-secondary mt-2">🎥 Start Camera</button>
-        <button type="button" id="btnCaptureEnroll" class="btn btn-sm btn-primary mt-2">📸 Capture</button>
-      </div>
-      <div id="enrollStatus" class="small text-muted mt-2">Camera not started</div>
+    <!-- Camera -->
+    <div class="mb-3 text-center">
+      <video id="enrollVideo" autoplay playsinline width="240" height="180" class="border rounded"></video>
+      <br>
+      <button type="button" id="btnEnrollCapture" class="btn btn-sm btn-primary mt-2">📸 Capture Photo</button>
     </div>
 
-    <button type="submit" class="btn btn-success w-100">Enroll Customer</button>
+    <!-- Snapshot + Preview -->
+    <canvas id="enrollCanvas" width="240" height="180" class="d-none"></canvas>
+    <img id="enrollPreview" class="img-thumbnail mt-2 d-none" width="240" alt="Enrollment photo">
+
+    <!-- Submit -->
+    <button type="submit" class="btn btn-success w-100 mt-3">Enroll Customer</button>
   </form>
 
   <div class="mt-3 text-center">
@@ -47,7 +49,7 @@
   </div>
 </div>
 
-<!-- ✅ Add TFJS + face-api.js via CDN (backup to local /models) -->
+<!-- ✅ Face API / TFJS -->
 <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
 <script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
