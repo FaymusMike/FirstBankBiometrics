@@ -1,7 +1,10 @@
 // app.js (type="module")
 /*
   Single script to be used on:
-    - index.html  (login / send magic link)         => elements: #emailInput, #btnSendLink
+    - index.html  (login / signup with email+password)  => elements (any of):
+        - inputs: #authEmail, #authPassword   OR   #emailInput, #passwordInput
+        - sign up button: #btnSignup
+        - login form: #authForm (submit) or #btnLogin
     - dashboard.html (admin list)                  => elements: #userList (tbody), #btnLogout
     - enroll.html  (enrollment form + capture)     => elements: #enrollForm, #customerId, #fullName, #address, #phone,
                                                      #enrollVideo, #btnStartEnrollCam, #btnCaptureEnroll, #enrollStatus
@@ -9,21 +12,19 @@
                                                      #btnCaptureVerify, #verifyStatus, #verifyResult
 
   Requirements:
-    - Add TFJS & face-api.js script tags in HTML files (defer).
-      Example (add before <script type="module" src="app.js">):
-        <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
-        <script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    - Include TFJS & face-api.js script tags in HTML. Example (before this script):
+      <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.8.0/dist/tf.min.js"></script>
+      <script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
-    - Host face-api models locally under /models OR change MODEL_URL to a hosted path.
-    - Add your domain (localhost) to Firebase Console -> Authentication -> Authorized domains.
+    - Host face-api models under /models (recommended) and set MODEL_URL = '/models'.
+    - Add 'localhost' to Firebase Console -> Authentication -> Authorized domains if testing locally.
 */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
   getAuth,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
@@ -37,7 +38,7 @@ import {
   deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-/* ======= CONFIG - paste your firebaseConfig (you already provided it) ======= */
+/* ======= FIREBASE CONFIG - your config (unchanged) ======= */
 const firebaseConfig = {
   apiKey: "AIzaSyDeRxX9CPkQ6q4_DQA9BzwvviVpTqvGs4o",
   authDomain: "firstbank-biometrics.firebaseapp.com",
@@ -53,11 +54,10 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 /* ======= Face API model settings ======= */
-/* Put the downloaded face-api models in /models (project root) and set MODEL_URL = '/models' */
-const MODEL_URL = '/models'; // recommended: host models locally for reliability
-const MATCH_THRESHOLD = 0.52; // tune for your dataset: lower = stricter
+const MODEL_URL = '/models'; // host models locally in /models for reliability
+const MATCH_THRESHOLD = 0.52; // tune for your environment
 
-/* ======= Helpers ======= */
+/* ======= Small helpers ======= */
 const $ = id => document.getElementById(id);
 const exists = id => !!$(id);
 
@@ -112,51 +112,96 @@ async function loadFaceModels(){
     console.error('Failed to load face models from', MODEL_URL, err);
   }
 }
-loadFaceModels(); // start asap
+loadFaceModels(); // fire & forget
 
-/* ======= Auth: passwordless sign-in (magic link) ======= */
-const actionCodeSettings = {
-  url: window.location.origin + '/dashboard.html', // after user clicks link they go to dashboard
-  handleCodeInApp: true
-};
+/* ======= AUTH: Email + Password (signup, login, logout) =========
+   Behavior:
+    - Sign up: createUserWithEmailAndPassword -> automatically creates admins/{uid} doc
+    - Login: signInWithEmailAndPassword
+    - Logout: signOut
+    - This design makes every new signup an admin automatically (per your request)
+*/
+(function wireAuthUI(){
+  // support multiple possible id names (makes it robust to different index.html versions)
+  const emailInput = $('authEmail') || $('emailInput') || $('loginEmail') || null;
+  const passwordInput = $('authPassword') || $('passwordInput') || $('loginPassword') || null;
+  const btnSignup = $('btnSignup') || $('signupBtn') || null;
+  const authForm = $('authForm') || $('loginForm') || null;
+  const btnLogin = $('btnLogin') || null;
+  const btnLogout = $('btnLogout') || null;
 
-if (exists('btnSendLink')){
-  $('btnSendLink').addEventListener('click', async () => {
-    const email = ($('emailInput') || {}).value || '';
-    if(!email){ alert('Enter email'); return; }
-    try{
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      window.localStorage.setItem('emailForSignIn', email);
-      alert('Sign-in link sent. Open your email and click the link to sign in.');
-    }catch(err){
-      console.error(err);
-      alert('Failed to send link: ' + (err.message || err));
-      // common cause: domain not allowlisted — instruct user
-      if(err.code === 'auth/unauthorized-continue-uri'){
-        alert('Add your site domain (e.g. localhost) to Firebase Console → Authentication → Authorized domains.');
+  // Signup button (if present)
+  if(btnSignup){
+    btnSignup.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = (emailInput && emailInput.value) ? emailInput.value.trim() : prompt('Enter email for signup');
+      const password = (passwordInput && passwordInput.value) ? passwordInput.value : prompt('Enter password for signup (min 6 chars)');
+      if(!email || !password){ return alert('Email and password required'); }
+      try{
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        // automatically add this user as admin in Firestore
+        await setDoc(doc(db, 'admins', userCred.user.uid), {
+          uid: userCred.user.uid,
+          email: email,
+          role: 'admin',
+          createdAt: new Date().toISOString()
+        });
+        alert('Signup successful. You are created as admin. Redirecting to dashboard...');
+        window.location.href = 'dashboard.html';
+      }catch(err){
+        console.error('Signup error', err);
+        alert('Signup failed: ' + (err.message || err));
       }
-    }
-  });
-}
+    });
+  }
 
-// handle incoming sign-in link
-(async function handleSignInLink(){
-  try{
-    if(isSignInWithEmailLink(auth, window.location.href)){
-      let email = window.localStorage.getItem('emailForSignIn');
-      if(!email) email = prompt('Enter the email you used to sign in:');
-      if(!email) return;
-      await signInWithEmailLink(auth, email, window.location.href);
-      window.localStorage.removeItem('emailForSignIn');
-      // redirect to dashboard (actionCodeSettings already tries to do this)
-      window.location.href = 'dashboard.html';
-    }
-  }catch(err){
-    console.error('Sign-in link error', err);
+  // Login via form submit (preferred)
+  if(authForm){
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = (emailInput && emailInput.value) ? emailInput.value.trim() : '';
+      const password = (passwordInput && passwordInput.value) ? passwordInput.value : '';
+      if(!email || !password){ return alert('Enter email and password'); }
+      try{
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = 'dashboard.html';
+      }catch(err){
+        console.error('Login error', err);
+        alert('Login failed: ' + (err.message || err));
+      }
+    });
+  } else if(btnLogin){
+    // fallback button-based login
+    btnLogin.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = (emailInput && emailInput.value) ? emailInput.value.trim() : prompt('Enter email');
+      const password = (passwordInput && passwordInput.value) ? passwordInput.value : prompt('Enter password');
+      if(!email || !password) return alert('Enter email and password');
+      try{
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = 'dashboard.html';
+      }catch(err){
+        console.error('Login error', err);
+        alert('Login failed: ' + (err.message || err));
+      }
+    });
+  }
+
+  // Logout wiring (dashboard logout button)
+  if(btnLogout){
+    btnLogout.addEventListener('click', async () => {
+      try{
+        await signOut(auth);
+        window.location.href = 'index.html';
+      }catch(err){
+        console.error('Sign out error', err);
+        alert('Sign out failed');
+      }
+    });
   }
 })();
 
-/* ======= Admin check helper (admins collection) ======= */
+/* ======= Helper: check admin in admins collection (returns boolean) ======= */
 async function checkIsAdmin(uid){
   if(!uid) return false;
   try{
@@ -173,22 +218,23 @@ onAuthStateChanged(auth, async (user) => {
   const page = window.location.pathname.split('/').pop();
   const protectedPages = ['dashboard.html', 'enroll.html', 'verify.html'];
   if(!user){
-    // if the user is on a protected page, redirect to login
+    // if on protected page and not signed in → redirect to index
     if(protectedPages.includes(page)){
       window.location.href = 'index.html';
     }
     return;
   }
 
+  // If a user just signed up, we created admins/{uid}. But still check so old accounts without admin doc are denied.
   const isAdmin = await checkIsAdmin(user.uid);
   if(!isAdmin && protectedPages.includes(page)){
-    alert('Access denied — only admin accounts can use this area. Create an admin doc in Firestore (admins collection) for your UID.');
-    await auth.signOut();
+    alert('Access denied — only admin accounts can use this area. (For this project, signup automatically creates admin docs. If you need to grant admin externally, create admins/{uid} in Firestore.)');
+    await signOut(auth);
     window.location.href = 'index.html';
     return;
   }
 
-  // If admin and on protected pages, initialize page-specific logic
+  // init page-specific logic for allowed admin pages
   if(page === 'dashboard.html') initDashboardPage();
   if(page === 'enroll.html') initEnrollPage();
   if(page === 'verify.html') initVerifyPage();
@@ -196,13 +242,12 @@ onAuthStateChanged(auth, async (user) => {
 
 /* ======= DASHBOARD PAGE ======= */
 async function initDashboardPage(){
-  // elements: #userList (tbody), #btnLogout
   const tbody = $('userList');
   const btnLogout = $('btnLogout');
   if(btnLogout) btnLogout.onclick = async () => { await signOut(auth); window.location.href = 'index.html'; };
 
-  // load customers
   async function loadCustomers(){
+    if(!tbody) return;
     tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
     try{
       const snaps = await getDocs(collection(db, 'customers'));
@@ -246,7 +291,6 @@ async function initDashboardPage(){
 
       tbody.querySelectorAll('.reenroll-btn').forEach(b => b.onclick = () => {
         const id = b.dataset.id;
-        // redirect to enroll page with ?id=...
         window.location.href = `enroll.html?id=${encodeURIComponent(id)}`;
       });
 
@@ -260,7 +304,7 @@ async function initDashboardPage(){
 
     }catch(err){
       console.error('loadCustomers error', err);
-      tbody.innerHTML = '<tr><td colspan="5" class="text-danger">Failed to load. Check console.</td></tr>';
+      if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-danger">Failed to load. Check console.</td></tr>';
     }
   }
 
@@ -348,7 +392,6 @@ async function initEnrollPage(){
         await setDoc(doc(db, 'customers', docId), docData);
         if(statusEl) statusEl.textContent = 'Enrolled successfully.';
         alert('Enrolled: ' + docData.fullName);
-        // optional: redirect to dashboard
         window.location.href = 'dashboard.html';
       }catch(err){
         console.error('save error', err);
@@ -446,19 +489,5 @@ async function initVerifyPage(){
 
 }
 
-/* ======= Utility: create admins doc instructions (beginner friendly) ======= */
-function showAdminSetupInstructions(){
-  const msg = [
-    'To make your account an admin (simple method):',
-    '1) In Firebase Console → Firestore Database → Create collection "admins".',
-    '2) Add a document with ID = your UID (get UID in Firebase Console → Authentication → Users).',
-    '3) Optionally add field "role" = "admin".',
-    'This script will check that document to allow admin actions.'
-  ].join('\n');
-  console.log(msg);
-}
-// show instructions once in console
-showAdminSetupInstructions();
-
-/* ======= End of app.js ======= */
-console.log('app.js loaded — ready.');
+/* ======= Helpful console note for beginner admin setup (now automatic on signup) ======= */
+console.log('app.js loaded — email/password auth enabled. Sign up creates admins/{uid} automatically.');
