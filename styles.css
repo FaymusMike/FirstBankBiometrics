@@ -1,0 +1,9 @@
+/* styles.css */
+:root{ --accent:#0d6efd; }
+body{ font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+.logo{ width:44px;height:44px;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;margin-right:8px; }
+.card{ border-radius:12px; box-shadow: 0 6px 20px rgba(12,13,25,0.06); border: none; }
+.small { font-size:0.85rem; }
+#adminList .user-row{ display:flex; gap:10px; align-items:center; padding:8px; border-bottom:1px solid #f1f1f1;}
+#adminList img{ width:56px; height:56px; object-fit:cover; border-radius:8px; }
+.btn-sm { padding: .375rem .5rem; }
