@@ -11,24 +11,29 @@
   <h2 class="text-center mb-4">Customer Verification</h2>
 
   <form id="verifyForm" class="card p-4 shadow-sm">
+    <!-- Search -->
     <div class="mb-3">
-      <label class="form-label">Customer ID or Name</label>
+      <label for="verifyQuery" class="form-label">Customer ID or Name</label>
       <input type="text" id="verifyQuery" class="form-control" placeholder="Enter Customer ID or Full Name" required>
     </div>
 
+    <!-- Camera -->
     <div class="mb-3 text-center">
       <video id="verifyCamera" autoplay playsinline width="240" height="180" class="border rounded"></video>
       <br>
       <button type="button" id="btnVerifyCapture" class="btn btn-sm btn-primary mt-2">📸 Capture for Verification</button>
     </div>
 
+    <!-- Snapshot + Preview -->
     <canvas id="verifySnapshot" width="240" height="180" class="d-none"></canvas>
     <img id="verifyPreview" class="img-thumbnail mt-2 d-none" width="240" alt="Verification photo">
 
+    <!-- Submit -->
     <button type="submit" class="btn btn-success w-100 mt-3">Verify Customer</button>
   </form>
 
-  <div id="verifyResult" class="alert alert-info mt-3 d-none"></div>
+  <!-- Result -->
+  <div id="verifyResult" class="alert mt-3 d-none"></div>
 
   <div class="mt-3 text-center">
     <a href="dashboard.html">⬅ Back to Dashboard</a>
