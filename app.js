@@ -426,14 +426,16 @@ async function initEnrollPage(){
   async function ensureCameraStarted(){
     if(!videoEl) throw new Error('No video element on page');
     try{
-      await startCamera(videoEl);
-      setStatus('Camera started', 'success');
+        const stream = await startCamera(videoEl);
+        console.log("Camera started:", stream);
+        setStatus('Camera started', 'success');
     }catch(err){
-      console.error('startCamera error', err);
-      setStatus('Camera error: ' + (err.message||''), 'error');
-      throw err;
+        console.error('startCamera error', err);
+        setStatus('Camera error: ' + (err.message||''), 'error');
+        throw err;
     }
-  }
+}
+
 
   // if there is a start button, wire it
   if(btnStartCam){
