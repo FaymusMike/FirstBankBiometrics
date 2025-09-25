@@ -11,15 +11,25 @@
   <div class="card shadow-sm p-4">
     <h2 class="text-center mb-4">FirstBank Biometric System</h2>
 
+    <!-- User Info -->
     <div class="alert alert-info">
       Logged in as: <span id="userEmail"></span>
     </div>
 
+    <!-- Admin Controls -->
     <h4 class="mb-3">Admin Controls</h4>
     <div class="d-grid gap-2">
       <a href="enroll.html" class="btn btn-primary">➕ Enroll Customer</a>
       <a href="verify.html" class="btn btn-success">✅ Verify Customer</a>
-      <a href="dashboard.html" id="btnDeleteMode" class="btn btn-danger">🗑 Delete Customer</a>
+      <button type="button" id="btnDeleteMode" class="btn btn-danger">🗑 Delete Customer</button>
+    </div>
+
+    <hr>
+
+    <!-- Customer List -->
+    <h4 class="mb-3">Enrolled Customers</h4>
+    <div id="customerList" class="list-group">
+      <!-- Populated dynamically by app.js -->
     </div>
 
     <hr>
